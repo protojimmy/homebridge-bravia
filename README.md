@@ -1,4 +1,4 @@
-# homebridge-bravia [![NPM Version](https://img.shields.io/npm/v/homebridge-bravia.svg)](https://www.npmjs.com/package/homebridge-bravia) [![Donate](https://img.shields.io/badge/donate-paypal-yellowgreen.svg)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=QKRPFAVB6WRW2&source=url)
+# homebridge-bravia [![NPM Version](https://img.shields.io/npm/v/homebridge-bravia.svg)](https://www.npmjs.com/package/homebridge-bravia) [![verified-by-homebridge](https://badgen.net/badge/homebridge/verified/purple)](https://github.com/homebridge/homebridge/wiki/Verified-Plugins) 
 
 HomeBridge plugin for Sony Bravia TVs (AndroidTV based ones and possibly others).
 
@@ -14,38 +14,20 @@ Supports the following functions
 
 This plugin requires iOS 12.2, to use it with previous iOS versions install version 0.96 of this plugin.
 
+**Note for users of versions before 2.0: Updating to 2.0+ will force you to set up the TV (including all HomeKit automation) again**
+
 ## Installation
-1. Install homebridge using: npm install -g homebridge
-2. Install this plugin using: npm install -g homebridge-bravia
-3. Set "Remote start" to ON in your TV Settings->Network->Remote Start
-4. Use one of the methods outlined below to authenticate with your TV
-
-### Secure Auth through command line
-When you run the plugin for the first time the easiest way is to run the homebridge process directly from command line as the plugin prompts you for a PIN that the TV will give you. This way the TV doesn't have to be set to the unsafe "Basic" login mode.
-
-1. Stop the homebridge server (e.g. `sudo systemctl stop homebridge`)
-2. Run server from command line (e.g. enter `homebridge` on command line directly)
-3. TV shows PIN
-4. Enter PIN on command line
-5. The plugin should now log in successfully
-6. Press Ctrl-C to stop the homebridge process
-7. Restart homebridge server as a service again (e.g. `sudo systemctl start homebridge`)
-
-### Secure Auth through config.json
-If for some reason you can't run the HomeBridge executable directly on command line you will have to run the server once, then add an entry "pwd":"PIN_HERE" with the PIN that appears on your TV to your config.json and restart the server, then after the first successful login remove the pwd entry again from config.json.
-
-1. Run server with homebridge plugin enabled
-2. TV shows PIN
-3. Add "pwd":"PIN_HERE" in config.json (with your PIN of course)
-4. Restart the homebridge server
-5. The plugin should now log in successfully
-6. Remove "pwd" entry from config.json
-7. Restart homebridge server again
-
-### Basic Auth login (not recommended!)
-If you want to use Basic login mode set the TV to Basic login mode (TV settings / PSK) and add a "pwd" entry with your password to config.json, no PIN entry is needed.
-
-Note that this is not recommended, it can easily be used to hack your TV and though it your whole network.
+- Install homebridge (e.g. using `npm install -g homebridge`)
+- Install this plugin (e.g. using `npm install -g homebridge-bravia`)
+- Configure the plugin settings through config.json or web UI (see below for the options)
+- Turn on the TV
+- Set "Remote start" to ON in your TV Settings->Network->Remote Start (not required)
+- Restart Homebridge
+- The TV will display a PIN
+- Enter the PIN at `http://homebridge.local:8999`
+  - Replace `homebridge.local` with the IP or name of your homebridge server
+  - Note that the web server is only accessible when you have to enter a PIN
+- Your TV should appear in HomeKit as soon as all channels have been scanned
 
 ### Configure config.json
 Example config:
@@ -60,14 +42,9 @@ Example config:
         "ip": "192.168.1.10",
         "soundoutput": "speaker",
         "tvsource": "tv:dvbs",
-        "applications": false,
-        "pwd": "12345",
+        "applications": [{"title":"Netflix"}],
         "sources": [
-          "extInput:hdmi",
-          "extInput:component",
-          "extInput:scart",
-          "extInput:cec",
-          "extInput:widi"
+          "extInput:hdmi"
         ]
       }
     ]
@@ -78,17 +55,36 @@ Example config:
 Required options:
   - `tvs` is the list of Sony TVs in your home
   - `name` is the name of your TV as it appears in HomeKit
-  - `ip` is the IP address of your TV, find it out through your router or set it in the TV
+  - `ip` is the IP address or host name of your TV, find and/or set it through your router or set it in the TV
 
 Optional options (all inside one TV entry):
-  - `sources` is an array of sources to display in HomeKit, default `["extInput:hdmi", "extInput:component", "extInput:scart", "extInput:cec", "extInput:widi"]`
-  - `tvsource` is your preferred TV source, can be `tv:dvbt`, `tv:dvbc` or `tv:dvbs`, default none (no TV channels listed as inputs)
+  - `sources` is an array of sources to display in HomeKit
+    - default `["extInput:hdmi", "extInput:component", "extInput:scart", "extInput:cec", "extInput:widi"]`
+    - these sources usually represent a type of input, so `extInput:hdmi` will show all your HDMI inputs in HomeKit
+    - source strings for your TV might look different, check the web if you find the right ones for your TV/input types
+  - `tvsource` is your preferred TV source, can be `tv:dvbt`, `tv:dvbc` or `tv:dvbs` (antenna, cable or sat), default none
+    - effectively this is just another source like the ones above
   - `applications` can be used to enable listing applications in the input list, default `false`
+    - Providing an array of objects with application titles will only add applications whose names contain the titles to the input list:
+      ```
+      "applications": [
+                          {
+                              "title": "Netflix"
+                          },
+                          {
+                              "title": "Plex"
+                          },
+                          ... etc.
+                      ]
+      ```
   - `soundoutput` is your preferred TV sound output, can be `speaker` or `headphone`, default `speaker`
-  - `cookiepath` file (!) name to store the cookie file to, default `"[user home]/.homebridge/sonycookie"`
-  - `port` is the IP port of your TV, default 80
-  - `mac` is the MAC address of your TV, set it to use WOL instead of HTTP to wake up the TV, default none
-  - `pwd` set password to use Basic login - only recommended for PIN entry!
+  - `port` is the HTTP port of your TV, default 80
+  - `mac` is the MAC address of your TV, only set it if you want to use WOL instead of HTTP to wake up the TV, default none
+  - `woladdress` sets the subnet for WOL, default `255.255.255.255`
+  - `serverPort` sets a different port than `8999` for the web server that allows entering the PIN number from the TV
+  - `externalaccessory` publishes the TV as an external accessory to HomeKit, this is a workaround to have multiple TVs show up in the remote app
+  - `updaterate` interval in milliseconds for TV status updates (on/off etc), default `5000`
+  - `channelupdaterate` interval in milliseconds for updates of the channel/input list, default `30000`
 
 ## Usage
 ### Basic functions
@@ -98,6 +94,18 @@ You can turn your TV on and off through Siri and Apples Home app.
 All Channels, Inputs and Applications can be selected in the HomeKit inputs selector
 #### TV Remote
 The TV registers as a TV remote device in HomeKit and allows to use basic function keys and set the volume through the Apple Remote app or iOS configuration screen. Use your phones volume knobs to set the TV volume!
+#### TV Speaker
+In addition to the iOS remote the plugin also exposes the TV speaker as a HomeKit accessory however only some apps show that accessory type, Apples Home app does not.
+
+## Development
+If you want new features or improve the plugin, you're very welcome to do so. The projects `devDependencies` include homebridge and the `npm run test` command has been adapted so that you can run a test instance of homebridge during development. 
+#### Setup
+- clone github repo
+- `npm install` in the project folder
+- create `.homebridge` folder in project root
+- add `config.json` with appropriate content to `.homebridge` folder
+- run `npm run test` to start the homebridge instance for testing
 
 ## Notes
+### Misc
 Thanks go out to "lombi" for his sony bravia homebridge plugin, which this plugin is heavily based on.
